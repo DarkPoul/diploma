@@ -12,40 +12,48 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 @Service
 public class DiplomaGeneratorService {
 
     private final OpenAiClient openAiClient;
+    private final Lock generationLock = new ReentrantLock(true);
 
     public DiplomaGeneratorService(OpenAiClient openAiClient) {
         this.openAiClient = openAiClient;
     }
 
     public GenerationResponse generate(GenerationRequest request) {
-        String systemPrompt = buildSystemPrompt();
-        Map<String, String> sections = buildSections();
-        Map<String, String> generated = new LinkedHashMap<>();
+        generationLock.lock();
+        try {
+            String systemPrompt = buildSystemPrompt();
+            Map<String, String> sections = buildSections();
+            Map<String, String> generated = new LinkedHashMap<>();
 
-        for (Map.Entry<String, String> entry : sections.entrySet()) {
-            String sectionTitle = entry.getKey();
-            String userPrompt = formatUserPrompt(sectionTitle, entry.getValue(), request);
-            try {
-                String content = openAiClient.generateText(systemPrompt, userPrompt).block();
-                generated.put(sectionTitle, normalize(content));
-            } catch (Exception ex) {
-                throw new RuntimeException("Помилка генерації секції '" + sectionTitle + "': " + ex.getMessage(), ex);
+            for (Map.Entry<String, String> entry : sections.entrySet()) {
+                String sectionTitle = entry.getKey();
+                String userPrompt = formatUserPrompt(sectionTitle, entry.getValue(), request);
+                try {
+                    String content = openAiClient.generateText(systemPrompt, userPrompt).block();
+                    generated.put(sectionTitle, normalize(content));
+                } catch (Exception ex) {
+                    throw new RuntimeException("Помилка генерації секції '" + sectionTitle + "': " + ex.getMessage(), ex);
+                }
             }
+
+            StringBuilder fullText = new StringBuilder();
+            generated.forEach((title, text) -> {
+                fullText.append(title).append("\n\n");
+                fullText.append(text.trim()).append("\n\n");
+            });
+
+            String path = persistToFile(fullText.toString());
+            return new GenerationResponse(fullText.toString(), path);
+        } finally {
+            generationLock.unlock();
         }
-
-        StringBuilder fullText = new StringBuilder();
-        generated.forEach((title, text) -> {
-            fullText.append(title).append("\n\n");
-            fullText.append(text.trim()).append("\n\n");
-        });
-
-        String path = persistToFile(fullText.toString());
-        return new GenerationResponse(fullText.toString(), path);
     }
 
     private String buildSystemPrompt() {
