@@ -1,0 +1,10 @@
+server:
+  port: 8080
+
+openai:
+  api-key: YOUR_OPENAI_API_KEY
+  model: gpt-4o-mini
+
+spring:
+  thymeleaf:
+    cache: false

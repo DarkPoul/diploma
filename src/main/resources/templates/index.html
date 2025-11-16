@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Генерація дипломної роботи</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body class="section">
+<div class="container">
+    <h1 class="title">Генератор дипломної роботи</h1>
+    <form th:action="@{/}" method="post" th:object="${request}">
+        <div class="field">
+            <label class="label">Тема диплома</label>
+            <div class="control">
+                <input class="input" type="text" th:field="*{topic}" placeholder="Наприклад, ШІ у медицині" required>
+            </div>
+            <p class="help is-danger" th:if="${#fields.hasErrors('topic')}" th:errors="*{topic}"></p>
+        </div>
+        <div class="field">
+            <label class="label">Спеціальність</label>
+            <div class="control">
+                <input class="input" type="text" th:field="*{specialty}" placeholder="Комп'ютерні науки" required>
+            </div>
+            <p class="help is-danger" th:if="${#fields.hasErrors('specialty')}" th:errors="*{specialty}"></p>
+        </div>
+        <div class="field">
+            <label class="label">Кількість сторінок</label>
+            <div class="control">
+                <input class="input" type="number" min="10" max="200" th:field="*{pages}" placeholder="80" required>
+            </div>
+            <p class="help is-danger" th:if="${#fields.hasErrors('pages')}" th:errors="*{pages}"></p>
+        </div>
+        <div class="field">
+            <div class="control">
+                <button class="button is-primary" type="submit">Згенерувати</button>
+            </div>
+        </div>
+    </form>
+</div>
+</body>
+</html>
