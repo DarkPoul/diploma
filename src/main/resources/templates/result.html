@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Результат генерації</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+<body class="section">
+<div class="container">
+    <h1 class="title">Згенерований текст</h1>
+    <p><strong>Шлях до файлу:</strong> <span th:text="${response.filePath}"></span></p>
+    <pre th:text="${response.content}" class="box" style="white-space: pre-wrap;"></pre>
+    <a class="button is-link" href="/">Повернутися</a>
+</div>
+</body>
+</html>
