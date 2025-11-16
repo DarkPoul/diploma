@@ -10,13 +10,20 @@ import reactor.util.retry.Retry;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.List;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.util.StringUtils;
 
 @Component
 public class OpenAiClient {
 
     private final WebClient webClient;
     private final OpenAiProperties properties;
+    private final Logger logger = LoggerFactory.getLogger(OpenAiClient.class);
 
     public OpenAiClient(WebClient openAiWebClient, OpenAiProperties properties) {
         this.webClient = openAiWebClient;
@@ -54,13 +61,64 @@ public class OpenAiClient {
                 .map(response -> response.getChoices().isEmpty()
                         ? ""
                         : response.getChoices().get(0).getMessage().content())
-                .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
-                        .filter(this::isRetryable)
-                        .transientErrors(true));
+                .retryWhen(rateLimitRetry());
     }
 
     private boolean isRetryable(Throwable throwable) {
         return throwable instanceof WebClientResponseException wce && wce.getStatusCode().value() == 429;
+    }
+
+    private Retry rateLimitRetry() {
+        return Retry.from(companion -> companion.flatMap(retrySignal -> {
+            Throwable failure = retrySignal.failure();
+            if (!isRetryable(failure)) {
+                return Mono.error(failure);
+            }
+
+            long attempt = retrySignal.totalRetries() + 1;
+            if (attempt > 5) {
+                return Mono.error(failure);
+            }
+
+            Duration delay = calculateBackoff(failure, attempt);
+            logger.warn("OpenAI rate limit hit, retrying attempt {} in {} seconds", attempt, delay.toSeconds());
+            return Mono.delay(delay);
+        }));
+    }
+
+    private Duration calculateBackoff(Throwable throwable, long attempt) {
+        if (throwable instanceof WebClientResponseException wce) {
+            String retryAfter = wce.getHeaders().getFirst("Retry-After");
+            Duration headerDelay = parseRetryAfter(retryAfter);
+            if (headerDelay != null) {
+                return headerDelay;
+            }
+        }
+
+        long seconds = (long) Math.min(30, Math.pow(2, attempt));
+        return Duration.ofSeconds(seconds);
+    }
+
+    private Duration parseRetryAfter(String retryAfter) {
+        if (!StringUtils.hasText(retryAfter)) {
+            return null;
+        }
+
+        try {
+            long seconds = Long.parseLong(retryAfter.trim());
+            if (seconds > 0) {
+                return Duration.ofSeconds(seconds);
+            }
+        } catch (NumberFormatException ignored) {
+            try {
+                Instant retryTime = Instant.parse(retryAfter.trim());
+                Duration until = Duration.between(Instant.now(), retryTime);
+                return until.isNegative() ? Duration.ZERO : until;
+            } catch (DateTimeParseException ignoredAgain) {
+                logger.debug("Unable to parse Retry-After header value: {}", retryAfter);
+            }
+        }
+        return null;
     }
 
     public record Message(String role, String content) { }
