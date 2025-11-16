@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.util.StringUtils;
 
 @Configuration
 public class OpenAiConfig {
@@ -15,6 +16,10 @@ public class OpenAiConfig {
         ExchangeStrategies strategies = ExchangeStrategies.builder()
                 .codecs(codecs -> codecs.defaultCodecs().maxInMemorySize(16 * 1024 * 1024))
                 .build();
+
+        if (!StringUtils.hasText(properties.getApiKey())) {
+            throw new IllegalStateException("OpenAI API key is missing. Please set the openai.api-key property or OPENAI_API_KEY environment variable.");
+        }
 
         return WebClient.builder()
                 .baseUrl("https://api.openai.com/v1")
