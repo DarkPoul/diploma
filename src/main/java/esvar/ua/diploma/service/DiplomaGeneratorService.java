@@ -30,8 +30,12 @@ public class DiplomaGeneratorService {
         for (Map.Entry<String, String> entry : sections.entrySet()) {
             String sectionTitle = entry.getKey();
             String userPrompt = formatUserPrompt(sectionTitle, entry.getValue(), request);
-            String content = openAiClient.generateText(systemPrompt, userPrompt).block();
-            generated.put(sectionTitle, normalize(content));
+            try {
+                String content = openAiClient.generateText(systemPrompt, userPrompt).block();
+                generated.put(sectionTitle, normalize(content));
+            } catch (Exception ex) {
+                throw new RuntimeException("Помилка генерації секції '" + sectionTitle + "': " + ex.getMessage(), ex);
+            }
         }
 
         StringBuilder fullText = new StringBuilder();
