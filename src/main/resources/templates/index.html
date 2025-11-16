@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <title>Генерація дипломної роботи</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <style>
+        #progress-box {
+            display: none;
+        }
+    </style>
 </head>
 <body class="section">
 <div class="container">
@@ -32,10 +37,28 @@
         </div>
         <div class="field">
             <div class="control">
-                <button class="button is-primary" type="submit">Згенерувати</button>
+                <button id="generate-btn" class="button is-primary" type="submit">Згенерувати</button>
             </div>
         </div>
     </form>
+
+    <div id="progress-box" class="notification is-info is-light mt-5">
+        <button class="delete" aria-label="Сховати" onclick="document.getElementById('progress-box').style.display='none'"></button>
+        <p class="has-text-weight-semibold">Генерація триває...</p>
+        <p>Текст формується по частинах. Зачекайте, будь ласка, доки з’явиться результат.</p>
+    </div>
 </div>
+
+<script>
+    const form = document.querySelector('form');
+    const generateBtn = document.getElementById('generate-btn');
+    const progressBox = document.getElementById('progress-box');
+
+    form.addEventListener('submit', () => {
+        generateBtn.classList.add('is-loading');
+        generateBtn.setAttribute('disabled', 'disabled');
+        progressBox.style.display = 'block';
+    });
+</script>
 </body>
 </html>
